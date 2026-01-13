@@ -1,49 +1,83 @@
+import pandas as pd
 import streamlit as st
-import importlib
-import requests
+import pydeck as pdk
 
-st.set_page_config(page_title="Setup Test", layout="wide")
-st.title("🧪 Setup Testing")
+from app.services.iss_api import fetch_iss
 
-def check_import(pkg: str) -> tuple[bool, str]:
-    try:
-        m = importlib.import_module(pkg)
-        ver = getattr(m, "__version__", "(no __version__)")
-        return True, str(ver)
-    except Exception as e:
-        return False, str(e)
+st.set_page_config(page_title="SatelliteFinder", layout="wide")
+st.title("🛰️ SatelliteFinder — ISS Live")
 
-st.subheader("1) Python Packages")
-pkgs = ["streamlit", "requests", "pandas", "pydeck", "skyfield"]
-for p in pkgs:
-    ok, info = check_import(p)
-    st.write(("✅" if ok else "❌"), p, "-", info)
+# ---------- Sidebar ----------
+with st.sidebar:
+    st.header("Controls")
+    refresh_sec = st.slider("Auto refresh (sec)", 2, 30, 5)
 
-st.subheader("2) ISS API test")
-ISS_API = "https://api.wheretheiss.at/v1/satellites/25544"
+# ---------- Fetch ISS ----------
+@st.cache_data(ttl=5)
+def get_iss_cached():
+    return fetch_iss()
+
 try:
-    r = requests.get(ISS_API, timeout=10)
-    r.raise_for_status()
-    data = r.json()
-    st.success("ISS API OK")
-    st.json({
-        "name": data.get("name"),
-        "latitude": data.get("latitude"),
-        "longitude": data.get("longitude"),
-        "altitude_km": data.get("altitude"),
-        "velocity_kmh": data.get("velocity"),
-        "timestamp": data.get("timestamp"),
+    iss = get_iss_cached()
+except Exception as e:
+    st.error(f"ISS fetch failed: {e}")
+    st.stop()
+
+# ---------- Layout ----------
+left, right = st.columns([2, 1], gap="large")
+
+# ---------- Map ----------
+df_iss = pd.DataFrame([{
+    "name": iss.get("name", "ISS"),
+    "lat": float(iss["latitude"]),
+    "lon": float(iss["longitude"]),
+    "alt_km": float(iss.get("altitude", 0.0)),
+    "vel_kmh": float(iss.get("velocity", 0.0)),
+}])
+
+layer = pdk.Layer(
+    "ScatterplotLayer",
+    data=df_iss,
+    get_position="[lon, lat]",
+    get_radius=80000,
+    pickable=True,
+)
+
+view = pdk.ViewState(
+    latitude=float(iss["latitude"]),
+    longitude=float(iss["longitude"]),
+    zoom=2.2,
+    pitch=0,
+)
+
+tooltip = {"html": "<b>{name}</b><br/>Lat: {lat}<br/>Lon: {lon}<br/>Alt(km): {alt_km}"}
+
+with left:
+    st.pydeck_chart(
+        pdk.Deck(
+            map_style="mapbox://styles/mapbox/dark-v11",
+            initial_view_state=view,
+            layers=[layer],
+            tooltip=tooltip,
+        ),
+        use_container_width=True,
+    )
+
+# ---------- Telemetry panel ----------
+with right:
+    st.subheader("ISS Telemetry")
+    st.write({
+        "Latitude": iss.get("latitude"),
+        "Longitude": iss.get("longitude"),
+        "Altitude (km)": iss.get("altitude"),
+        "Velocity (km/h)": iss.get("velocity"),
+        "Timestamp": iss.get("timestamp"),
     })
-except Exception as e:
-    st.error(f"ISS API failed: {e}")
 
-st.subheader("3) Starlink TLE download test")
-STARLINK_TLE_URL = "https://celestrak.org/NORAD/elements/gp.php?FORMAT=tle&GROUP=starlink"
-try:
-    r = requests.get(STARLINK_TLE_URL, timeout=20)
-    r.raise_for_status()
-    lines = [ln.strip() for ln in r.text.splitlines() if ln.strip()]
-    st.success(f"TLE OK (lines={len(lines)})")
-    st.code("\n".join(lines[:6]))
-except Exception as e:
-    st.error(f"TLE download failed: {e}")
+    st.caption("Auto refresh via rerun.")
+    st.write(f"Next refresh: {refresh_sec}s")
+
+# ---------- Simple auto refresh ----------
+import time
+time.sleep(refresh_sec)
+st.rerun()
