@@ -1,8 +1,14 @@
-# ---- Python ----
+# Python
+.venv/
 __pycache__/
-*.py[cod]
-*.pyo
-*.pyd
+*.pyc
+
+# Env
+.env
+.env.*
+
+# macOS
+.DS_Store
 
 # ---- Virtual Environment ----
 .venv/
@@ -23,3 +29,10 @@ env/
 # ---- Logs / Cache ----
 *.log
 .cache/
+
+# Env
+.env
+.env.*
+
+# macOS
+.DS_Store
