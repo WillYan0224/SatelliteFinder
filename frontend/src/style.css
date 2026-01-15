@@ -105,7 +105,7 @@ button:focus-visible {
   top: 12px;
   left: 36px;
   z-index: 9999;
-  pointer-events: none; /* drag */
+  pointer-events: auto; /* drag */
   color: white;
   font-family: ui-sans-serif, system-ui;
   background: rgba(0, 0, 0, 0.756);

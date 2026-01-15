@@ -18,6 +18,12 @@ const viewer = new Viewer("app", {
 });
 
 const hud = document.getElementById("issText");
+document.getElementById("btnStarlink")?.addEventListener("click", () => {
+  renderStarlink(200);
+});
+document.getElementById("btnClear")?.addEventListener("click", () => {
+  clearStarlink();
+});
 
 let issEnt = viewer.entities.getById("iss");
 if (!issEnt) {
@@ -117,6 +123,40 @@ async function tick() {
   if (!tick._didFly) {
     tick._didFly = true;
     viewer.flyTo(issEnt);
+  }
+}
+
+async function fetchStarlink(limit = 200) {
+  const res = await fetch(`http://127.0.0.1:8000/api/starlink?limit=${limit}`);
+  if (!res.ok) throw new Error("Starlink API failed");
+  return await res.json(); // {count, items:[{name, latitude, longitude, altitude_km, ...}]}
+}
+
+let starlinkEntities = [];
+function clearStarlink() {
+  for (const e of starlinkEntities) viewer.entities.remove(e);
+  starlinkEntities = [];
+}
+
+async function renderStarlink(limit = 200) {
+  const data = await fetchStarlink(limit);
+  clearStarlink();
+
+  for (const s of data.items) {
+    const lat = Number(s.latitude);
+    const lon = Number(s.longitude);
+    const altKm = Number(s.altitude_km ?? 550);
+
+    const e = viewer.entities.add({
+      name: s.name,
+      position: Cartesian3.fromDegrees(lon, lat, altKm * 1000),
+      point: {
+        pixelSize: 3,
+        color: Color.YELLOW.withAlpha(0.8),
+      },
+    });
+
+    starlinkEntities.push(e);
   }
 }
 
