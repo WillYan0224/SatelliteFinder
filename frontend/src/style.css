@@ -94,3 +94,26 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+#app {
+  width: 100vw;
+  height: 100vh;
+}
+
+#hud {
+  position: absolute;
+  top: 12px;
+  left: 36px;
+  z-index: 9999;
+  pointer-events: none; /* drag */
+  color: white;
+  font-family: ui-sans-serif, system-ui;
+  background: rgba(0, 0, 0, 0.756);
+  padding: 10px 12px;
+  border-radius: 10px;
+  backdrop-filter: blur(6px);
+}
+
+#issText {
+  white-space: pre;
+}
