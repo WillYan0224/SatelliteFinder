@@ -229,3 +229,9 @@ button:focus-visible {
 #starlinkSlider {
   width: 100%;
 }
+
+#issText,
+#nearestText,
+#pickedStarlinkText {
+  white-space: pre-line;
+}

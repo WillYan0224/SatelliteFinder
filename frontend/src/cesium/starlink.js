@@ -29,13 +29,14 @@ export function setupStarlink(viewer) {
     highlighted = null;
   }
 
-  function highlight(entity) {
+  function highlight(entity, labelText = "Selected") {
     resetHighlight();
+
     if (entity?.point) {
       entity.point.pixelSize = 10;
       entity.point.color = Color.CYAN.withAlpha(0.95);
       entity.label = {
-        text: "Nearest",
+        text: labelText,
         font: "14px sans-serif",
         fillColor: Color.WHITE,
         pixelOffset: new Cartesian3(0, -18, 0),
@@ -48,10 +49,11 @@ export function setupStarlink(viewer) {
     if (!starlinkMap.size) return null;
 
     let best = null;
-    for (const { entity, lat, lon, altKm } of starlinkMap.values()) {
+
+    for (const [name, { entity, lat, lon, altKm }] of starlinkMap.entries()) {
       const dKm = haversineKm(userLat, userLon, lat, lon);
       if (!best || dKm < best.distanceKm) {
-        best = { entity, lat, lon, altKm, distanceKm: dKm };
+        best = { name, entity, lat, lon, altKm, distanceKm: dKm };
       }
     }
     return best;
@@ -61,9 +63,35 @@ export function setupStarlink(viewer) {
     const nearest = findNearest(userLat, userLon);
     if (!nearest) return null;
 
-    highlight(nearest.entity);
+    highlight(nearest.entity, "Nearest");
     if (fly) viewer.flyTo(nearest.entity);
     return nearest;
+  }
+
+  function getInfoByEntity(entity) {
+    if (!entity) return null;
+
+    for (const [name, rec] of starlinkMap.entries()) {
+      if (rec.entity === entity) {
+        return {
+          name,
+          lat: rec.lat,
+          lon: rec.lon,
+          altKm: rec.altKm,
+          entity: rec.entity,
+        };
+      }
+    }
+    return null;
+  }
+
+  function selectByEntity(entity, { fly = true } = {}) {
+    const info = getInfoByEntity(entity);
+    if (!info) return null;
+
+    highlight(info.entity, "Selected");
+    if (fly) viewer.flyTo(info.entity);
+    return info; // { name, lat, lon, altKm, entity }
   }
 
   function upsertStarlink(s) {
@@ -141,5 +169,7 @@ export function setupStarlink(viewer) {
     findNearest,
     highlight,
     snapNearest,
+    getInfoByEntity,
+    selectByEntity,
   };
 }

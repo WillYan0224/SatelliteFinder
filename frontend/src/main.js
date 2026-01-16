@@ -4,6 +4,7 @@ import { setupISS } from "./cesium/iss.js";
 import { setupStarlink } from "./cesium/starlink.js";
 import { setupGeolocate } from "./cesium/geolocate.js";
 import { setupHUD } from "./cesium/hud.js";
+import { ScreenSpaceEventHandler, ScreenSpaceEventType } from "cesium";
 
 const viewer = createViewer("app");
 
@@ -84,9 +85,20 @@ const hud = setupHUD({
   },
 });
 
-const iss = setupISS(viewer);
+const handler = new ScreenSpaceEventHandler(viewer.scene.canvas);
+
+handler.setInputAction((movement) => {
+  const picked = viewer.scene.pick(movement.position);
+  if (!picked || !picked.id) return;
+
+  const info = starlink.selectByEntity(picked.id, { fly: true });
+  if (!info) return;
+
+  hud.setPickedStarlink?.(info);
+}, ScreenSpaceEventType.LEFT_CLICK);
 
 // ISS
+const iss = setupISS(viewer);
 async function loop() {
   await iss.tick(hud.setTelemetry);
 }

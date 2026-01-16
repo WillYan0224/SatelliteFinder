@@ -17,6 +17,36 @@ export function setupHUD({
   const btnNearest = document.getElementById("btnNearest");
   const nearestText = document.getElementById("nearestText");
 
+  // selected (picked by click)
+  const pickedText = document.getElementById("pickedStarlinkText");
+
+  function setPickedStarlink(info) {
+    if (!pickedText) return;
+
+    if (!info) {
+      pickedText.textContent = "Selected: —";
+      return;
+    }
+
+    pickedText.textContent =
+      `Selected: ${info.name}\n` +
+      `Lat: ${info.lat.toFixed(4)}  Lon: ${info.lon.toFixed(4)}\n` +
+      `Alt: ${info.altKm.toFixed(1)} km`;
+  }
+
+  function setNearestStarlink(nearest) {
+    if (!nearestText) return;
+
+    if (!nearest) {
+      nearestText.textContent = "Nearest: —";
+      return;
+    }
+
+    nearestText.textContent =
+      `Nearest: ${nearest.name}\n` +
+      `Distance: ${nearest.distanceKm.toFixed(1)} km`;
+  }
+
   function setTelemetry({ lat, lon, altKm, vel }) {
     if (!hudText) return;
     hudText.textContent =
@@ -34,41 +64,43 @@ export function setupHUD({
   function syncStarlinkUI() {
     const v = getStarlinkLimit();
     if (countText) countText.textContent = String(v);
-    if (btnStarlink) btnStarlink.textContent = `Load Starlink`;
+    if (btnStarlink) btnStarlink.textContent = "Load Starlink";
   }
 
   slider?.addEventListener("input", syncStarlinkUI);
 
   btnStarlink?.addEventListener("click", async () => {
     await onLoadStarlink?.(getStarlinkLimit());
-    if (nearestText) nearestText.textContent = "Nearest: —";
+    setNearestStarlink(null);
   });
 
   btnClear?.addEventListener("click", () => {
     onClear?.();
-    if (nearestText) nearestText.textContent = "Nearest: —";
+    setNearestStarlink(null);
+    setPickedStarlink(null);
   });
 
   btnLocate?.addEventListener("click", () => onLocateMe?.());
 
-  // Nearest
   btnNearest?.addEventListener("click", async () => {
     try {
       const nearest = await onNearestStarlink?.(getStarlinkLimit());
-      if (!nearest) {
-        if (nearestText) nearestText.textContent = "Nearest: —";
-        return;
-      }
-      if (nearestText) {
-        nearestText.textContent = `Nearest: ${
-          nearest.name
-        } • ${nearest.distanceKm.toFixed(1)} km`;
-      }
+      setNearestStarlink(nearest);
     } catch (e) {
       console.warn(e);
+      setNearestStarlink(null);
     }
   });
 
+  // init
   syncStarlinkUI();
-  return { setTelemetry, syncStarlinkUI };
+  setNearestStarlink(null);
+  setPickedStarlink(null);
+
+  return {
+    setTelemetry,
+    syncStarlinkUI,
+    setPickedStarlink,
+    setNearestStarlink,
+  };
 }
