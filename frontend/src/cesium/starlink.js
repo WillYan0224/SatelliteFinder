@@ -17,8 +17,8 @@ export function setupStarlink(viewer) {
   }
 
   async function render(limit = 200) {
-    const data = await fetchStarlink(limit);
     clear();
+    const data = await fetchStarlink(limit);
 
     for (const s of data.items) {
       const lat = Number(s.latitude);
