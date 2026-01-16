@@ -66,9 +66,18 @@
 
       <!-- Locate group -->
       <section class="hud-group">
-        <button id="btnLocate" class="hud-btn hud-btn-locate">
-          ⦿ Locate Me
-        </button>
+        <div class="hud-row hud-row-gap">
+          <button id="btnLocate" class="hud-btn hud-btn-locate">
+            ⦿ Locate Me
+          </button>
+          <button id="btnNearest" class="hud-btn hud-btn-primary">
+            Nearest Starlink
+          </button>
+        </div>
+
+        <div class="hud-hint" style="margin-top: 8px">
+          <div id="nearestText">Nearest: —</div>
+        </div>
       </section>
     </div>
 
