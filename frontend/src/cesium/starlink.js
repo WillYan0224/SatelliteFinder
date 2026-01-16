@@ -9,7 +9,11 @@ export function setupStarlink(viewer) {
     const res = await fetch(
       `http://127.0.0.1:8000/api/starlink?limit=${limit}`
     );
-    if (!res.ok) throw new Error("Starlink API failed");
+    if (!res.ok) {
+      // keep message useful
+      const txt = await res.text().catch(() => "");
+      throw new Error(`Starlink API failed: ${res.status} ${txt}`);
+    }
     return await res.json();
   }
 
@@ -24,6 +28,7 @@ export function setupStarlink(viewer) {
     highlighted.label = undefined;
     highlighted = null;
   }
+
   function highlight(entity) {
     resetHighlight();
     if (entity?.point) {
@@ -49,7 +54,7 @@ export function setupStarlink(viewer) {
         best = { entity, lat, lon, altKm, distanceKm: dKm };
       }
     }
-    return best; // { entity, lat, lon, altKm, distanceKm }
+    return best;
   }
 
   function snapNearest(userLat, userLon, { fly = true } = {}) {
@@ -92,10 +97,17 @@ export function setupStarlink(viewer) {
     return data.count;
   }
 
-  function startAutoUpdate(limit = 200, intervalMs = 5000) {
+  // dynamic update
+  async function startAutoUpdate(limit = 200, intervalMs = 30000) {
     stopAutoUpdate();
-    renderOnce(limit); 
-    timer = setInterval(() => renderOnce(limit), intervalMs);
+
+    await renderOnce(limit);
+
+    timer = setInterval(() => {
+      renderOnce(limit).catch((e) => {
+        console.warn("[Starlink] auto update failed:", e);
+      });
+    }, intervalMs);
   }
 
   function stopAutoUpdate() {
@@ -108,6 +120,7 @@ export function setupStarlink(viewer) {
   function clear() {
     resetHighlight();
     stopAutoUpdate();
+
     for (const { entity } of starlinkMap.values()) {
       viewer.entities.remove(entity);
     }
