@@ -1,8 +1,9 @@
 import { Cartesian3, Color } from "cesium";
+import { haversineKm } from "./utils.js";
 
 export function setupStarlink(viewer) {
-  let starlinkEntities = [];
-  let starlinkRecords = []; // [{ e, name, lat, lon, altKm }]
+  const starlinkMap = new Map(); // name -> { entity, lat, lon, altKm }
+  let timer = null;
 
   async function fetchStarlink(limit = 200) {
     const res = await fetch(
@@ -10,61 +11,6 @@ export function setupStarlink(viewer) {
     );
     if (!res.ok) throw new Error("Starlink API failed");
     return await res.json();
-  }
-
-  function clear() {
-    for (const e of starlinkEntities) viewer.entities.remove(e);
-    starlinkEntities = [];
-    starlinkRecords = [];
-    resetHighlight();
-  }
-
-  async function render(limit = 200) {
-    clear();
-    const data = await fetchStarlink(limit);
-
-    for (const s of data.items) {
-      const lat = Number(s.latitude);
-      const lon = Number(s.longitude);
-      const altKm = Number(s.altitude_km ?? 550);
-
-      const e = viewer.entities.add({
-        name: s.name,
-        position: Cartesian3.fromDegrees(lon, lat, altKm * 1000),
-        point: { pixelSize: 3, color: Color.YELLOW.withAlpha(0.8) },
-      });
-
-      starlinkEntities.push(e);
-      starlinkRecords.push({ e, name: s.name, lat, lon, altKm });
-    }
-
-    return { count: data.count, items: data.items };
-  }
-
-  function hasData() {
-    return starlinkRecords.length > 0;
-  }
-
-  function haversineKm(lat1, lon1, lat2, lon2) {
-    const R = 6371;
-    const toRad = (v) => (v * Math.PI) / 180;
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-    return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  }
-
-  function findNearest(userLat, userLon) {
-    if (!starlinkRecords.length) return null;
-
-    let best = null;
-    for (const r of starlinkRecords) {
-      const dKm = haversineKm(userLat, userLon, r.lat, r.lon);
-      if (!best || dKm < best.distanceKm) best = { ...r, distanceKm: dKm };
-    }
-    return best; // { e, name, lat, lon, altKm, distanceKm }
   }
 
   let highlighted = null;
@@ -78,10 +24,8 @@ export function setupStarlink(viewer) {
     highlighted.label = undefined;
     highlighted = null;
   }
-
   function highlight(entity) {
     resetHighlight();
-
     if (entity?.point) {
       entity.point.pixelSize = 10;
       entity.point.color = Color.CYAN.withAlpha(0.95);
@@ -95,9 +39,94 @@ export function setupStarlink(viewer) {
     }
   }
 
-  function flyTo(entity) {
-    if (entity) viewer.flyTo(entity);
+  function findNearest(userLat, userLon) {
+    if (!starlinkMap.size) return null;
+
+    let best = null;
+    for (const { entity, lat, lon, altKm } of starlinkMap.values()) {
+      const dKm = haversineKm(userLat, userLon, lat, lon);
+      if (!best || dKm < best.distanceKm) {
+        best = { entity, lat, lon, altKm, distanceKm: dKm };
+      }
+    }
+    return best; // { entity, lat, lon, altKm, distanceKm }
   }
 
-  return { render, clear, hasData, findNearest, highlight, flyTo };
+  function snapNearest(userLat, userLon, { fly = true } = {}) {
+    const nearest = findNearest(userLat, userLon);
+    if (!nearest) return null;
+
+    highlight(nearest.entity);
+    if (fly) viewer.flyTo(nearest.entity);
+    return nearest;
+  }
+
+  function upsertStarlink(s) {
+    const lat = Number(s.latitude);
+    const lon = Number(s.longitude);
+    const altKm = Number(s.altitude_km ?? 550);
+    const pos = Cartesian3.fromDegrees(lon, lat, altKm * 1000);
+
+    if (starlinkMap.has(s.name)) {
+      const rec = starlinkMap.get(s.name);
+      rec.entity.position = pos;
+      rec.lat = lat;
+      rec.lon = lon;
+      rec.altKm = altKm;
+    } else {
+      const entity = viewer.entities.add({
+        name: s.name,
+        position: pos,
+        point: {
+          pixelSize: 3,
+          color: Color.YELLOW.withAlpha(0.8),
+        },
+      });
+      starlinkMap.set(s.name, { entity, lat, lon, altKm });
+    }
+  }
+
+  async function renderOnce(limit = 200) {
+    const data = await fetchStarlink(limit);
+    for (const s of data.items) upsertStarlink(s);
+    return data.count;
+  }
+
+  function startAutoUpdate(limit = 200, intervalMs = 5000) {
+    stopAutoUpdate();
+    renderOnce(limit); 
+    timer = setInterval(() => renderOnce(limit), intervalMs);
+  }
+
+  function stopAutoUpdate() {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+  }
+
+  function clear() {
+    resetHighlight();
+    stopAutoUpdate();
+    for (const { entity } of starlinkMap.values()) {
+      viewer.entities.remove(entity);
+    }
+    starlinkMap.clear();
+  }
+
+  function hasData() {
+    return starlinkMap.size > 0;
+  }
+
+  return {
+    renderOnce,
+    startAutoUpdate,
+    stopAutoUpdate,
+    clear,
+    hasData,
+    starlinkMap,
+    findNearest,
+    highlight,
+    snapNearest,
+  };
 }

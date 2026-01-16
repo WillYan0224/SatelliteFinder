@@ -10,25 +10,66 @@ const viewer = createViewer("app");
 const starlink = setupStarlink(viewer);
 const geo = setupGeolocate(viewer);
 
+let userLocation = null; // { lat, lon }
+let nearestTimer = null;
+
+// snap every 5secs
+function startNearestLoop() {
+  stopNearestLoop();
+
+  nearestTimer = setInterval(() => {
+    if (!userLocation) return;
+    if (!starlink.hasData()) return;
+
+    // highlight only
+    starlink.snapNearest(userLocation.lat, userLocation.lon, {
+      fly: false,
+    });
+  }, 5000);
+}
+
+function stopNearestLoop() {
+  if (nearestTimer) {
+    clearInterval(nearestTimer);
+    nearestTimer = null;
+  }
+}
+
 const hud = setupHUD({
-  onLoadStarlink: (limit) => starlink.render(limit),
-  onClear: () => starlink.clear(),
-  onLocateMe: () => geo.locateMeStrict(), // strict
+  onLoadStarlink: (limit) => {
+    starlink.startAutoUpdate(limit, 5000);
+  },
+
+  // clear all
+  onClear: () => {
+    starlink.clear();
+    stopNearestLoop();
+    userLocation = null;
+  },
+
+  onLocateMe: async () => {
+    const me = await geo.locateMeStrict();
+    userLocation = { lat: me.lat, lon: me.lon };
+    return me;
+  },
+
   onNearestStarlink: async (limit) => {
-    const me = await geo.locateMeStrict(); // {lat, lon}
+    if (!userLocation) {
+      const me = await geo.locateMeStrict();
+      userLocation = { lat: me.lat, lon: me.lon };
+    }
 
     if (!starlink.hasData()) {
-      await starlink.render(limit);
+      await starlink.renderOnce(limit);
+      starlink.startAutoUpdate(limit, 5000);
     }
 
-    const nearest = starlink.findNearest(me.lat, me.lon);
-    if (!nearest) {
-      alert("No Starlink data loaded.");
-      return null;
-    }
+    const nearest = starlink.snapNearest(userLocation.lat, userLocation.lon, {
+      fly: true,
+    });
 
-    starlink.highlight(nearest.e);
-    starlink.flyTo(nearest.e);
+    // tracking & snapping to nearest every 5secs
+    startNearestLoop();
 
     return nearest;
   },
@@ -36,7 +77,6 @@ const hud = setupHUD({
 
 const iss = setupISS(viewer);
 
-// loop
 async function loop() {
   await iss.tick(hud.setTelemetry);
 }
