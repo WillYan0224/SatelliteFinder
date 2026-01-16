@@ -7,7 +7,7 @@ from app.services.orbit import sat_latlon_now
 
 app = FastAPI(title="SatelliteFinder API")
 
-# CORS (dev: 只放 Vite)
+# CORS (dev: Vite only)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],

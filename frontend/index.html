@@ -26,18 +26,52 @@
   <body>
     <div id="app"></div>
     <div id="hud">
-      <div><b>ISS Telemetry</b></div>
-      <div id="issText">Loading...</div>
-      <div
-        style="margin-top: 8px; display: flex; gap: 8px; align-items: center"
-      >
-        <button id="btnStarlink">Load Starlink (200)</button>
-        <button id="btnClear">Clear</button>
-        <button id="btnMe">
-          <i class="fa-solid fa-location-crosshairs"></i> Locate Me
+      <!-- ISS group -->
+      <section class="hud-group">
+        <div class="hud-title">ISS Telemetry</div>
+        <div id="issText">Loading...</div>
+      </section>
+
+      <div class="hud-sep"></div>
+
+      <!-- Starlink group -->
+      <section class="hud-group">
+        <div class="hud-title hud-title-sm">Starlink</div>
+
+        <div class="hud-row hud-row-between">
+          <div>Starlink count</div>
+          <div id="starlinkCountText">200</div>
+        </div>
+
+        <input
+          id="starlinkSlider"
+          type="range"
+          min="50"
+          max="1000"
+          step="50"
+          value="200"
+        />
+        <div class="hud-hint">50 ~ 1000 (step 50)</div>
+
+        <!-- buttons same row -->
+        <div class="hud-row hud-row-gap">
+          <button id="btnStarlink" class="hud-btn hud-btn-primary">
+            Load Starlink (200)
+          </button>
+          <button id="btnClear" class="hud-btn">Clear</button>
+        </div>
+      </section>
+
+      <div class="hud-sep"></div>
+
+      <!-- Locate group -->
+      <section class="hud-group">
+        <button id="btnLocate" class="hud-btn hud-btn-locate">
+          ⦿ Locate Me
         </button>
-      </div>
+      </section>
     </div>
+
     <script type="module" src="src/main.js"></script>
   </body>
 </html>

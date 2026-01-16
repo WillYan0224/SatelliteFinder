@@ -159,3 +159,110 @@ button:focus-visible {
   left: 150%;
   transition: left 0.6s ease-in-out;
 }
+
+#hud {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  width: 320px;
+  padding: 16px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(10px);
+  border-radius: 14px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  z-index: 10;
+}
+
+.hud-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hud-title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.hud-title-sm {
+  font-size: 16px;
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+.hud-sep {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.18);
+  margin: 14px 0;
+}
+
+#issText {
+  white-space: pre-line; /* 你用 \n 就會換行 */
+  line-height: 1.55;
+  font-size: 18px;
+}
+
+.hud-row {
+  display: flex;
+  align-items: center;
+}
+
+.hud-row-between {
+  justify-content: space-between;
+}
+
+.hud-row-gap {
+  gap: 10px;
+}
+
+.hud-hint {
+  font-size: 14px;
+  opacity: 0.75;
+  margin-top: -4px;
+}
+
+/* buttons */
+.hud-btn {
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 16px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: transform 0.05s ease, background 0.15s ease;
+}
+
+.hud-btn:active {
+  transform: scale(0.99);
+}
+
+.hud-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* same row buttons: make them share width nicely */
+.hud-row-gap .hud-btn {
+  flex: 1;
+}
+
+.hud-btn-primary {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Locate Me on its own line full width */
+.hud-btn-locate {
+  width: 100%;
+  background: #2563eb; /* 藍色 */
+}
+
+.hud-btn-locate:hover {
+  background: #1d4ed8;
+}
+
+/* slider */
+#starlinkSlider {
+  width: 100%;
+}
