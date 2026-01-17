@@ -4,15 +4,38 @@ import {
   DistanceDisplayCondition,
   HeightReference,
   NearFarScalar,
+  Ellipsoid,
+  EllipsoidalOccluder,
 } from "cesium";
 
 export function setupLabels(viewer) {
   let countryEntities = [];
   let cityEntities = [];
 
-  // for viewport visibility control
   let allLabelEntities = [];
   let _visScheduled = false;
+
+  // -----------------------------
+  // Tuning knobs (TUNE THESE!!!!)
+  // -----------------------------
+  const PAD_PX = 30;
+
+  // Camera height thresholds (meters)
+  const CITY_ENABLE_HEIGHT = 6.0e6; // higher means fewer
+  const CITY_SOFT_HEIGHT = 3.0e6; // higher means fewer
+
+  // Caps
+  const MAX_CITY_LABELS_NEAR = 60;
+  const MAX_CITY_LABELS_FAR = 25;
+
+  // Declutter grid size (px) — LESS CHAOS!!!!
+  const GRID_CITY_PX = 70; // // higher means fewer
+  const GRID_COUNTRY_PX = 140; // // higher means fewer
+
+  // Distance display
+  const CITY_MAX_DISTANCE = 1.6e6;
+  const COUNTRY_MIN_DISTANCE = 1.6e6;
+  const COUNTRY_MAX_DISTANCE = 1.5e7;
 
   async function loadJSON(url) {
     const r = await fetch(url);
@@ -51,15 +74,20 @@ export function setupLabels(viewer) {
         outlineWidth: isCountry ? 3 : 2,
 
         heightReference: HeightReference.CLAMP_TO_GROUND,
+
+        // occluder
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
 
         distanceDisplayCondition: isCountry
-          ? new DistanceDisplayCondition(1.4e6, 1.5e7)
-          : new DistanceDisplayCondition(0.0, 3.5e6),
+          ? new DistanceDisplayCondition(
+              COUNTRY_MIN_DISTANCE,
+              COUNTRY_MAX_DISTANCE,
+            )
+          : new DistanceDisplayCondition(0.0, CITY_MAX_DISTANCE),
 
         translucencyByDistance: isCountry
           ? undefined
-          : new NearFarScalar(1.5e6, 1.0, 3.5e6, 0.0),
+          : new NearFarScalar(1.5e6, 1.0, CITY_MAX_DISTANCE, 0.0),
       },
     });
 
@@ -93,7 +121,6 @@ export function setupLabels(viewer) {
     }
   }
 
-  // ---------- Viewport visibility (compatible method) ----------
   function _applyViewportVisibility() {
     _visScheduled = false;
 
@@ -103,28 +130,97 @@ export function setupLabels(viewer) {
     const h = canvas.clientHeight || 0;
     if (!w || !h) return;
 
-    const pad = 30;
+    const camera = scene.camera;
+    const camHeight = camera.positionCartographic?.height ?? 0;
+
+    // strict earth occlusion
+    const ellipsoid = scene.globe?.ellipsoid ?? Ellipsoid.WGS84;
+    const occluder = new EllipsoidalOccluder(ellipsoid, camera.positionWC);
+
+    const showCities = camHeight <= CITY_ENABLE_HEIGHT;
+    const maxCity =
+      camHeight <= CITY_SOFT_HEIGHT
+        ? MAX_CITY_LABELS_NEAR
+        : MAX_CITY_LABELS_FAR;
+    let visibleCityCount = 0;
+
+    // screen-space declutter
+    const usedCityCells = new Set();
+    const usedCountryCells = new Set();
+
+    function cellKey(x, y, cell) {
+      const cx = Math.floor(x / cell);
+      const cy = Math.floor(y / cell);
+      return `${cx},${cy}`;
+    }
 
     for (const ent of allLabelEntities) {
-      const pos = ent.position?.getValue?.(viewer.clock.currentTime);
-      if (!pos || !ent.label) {
-        if (ent.label) ent.label.show = false;
+      if (!ent?.label) continue;
+
+      // city off at high zoom-out
+      if (ent.__labelKind === "city" && !showCities) {
+        ent.label.show = false;
         continue;
       }
 
-      // ✅ Most compatible API
-      const win = scene.cartesianToCanvasCoordinates(pos);
+      const pos = ent.position?.getValue?.(viewer.clock.currentTime);
+      if (!pos) {
+        ent.label.show = false;
+        continue;
+      }
 
-      // null = behind camera / not projectable
+      // dont displace when earth blocked
+      if (!occluder.isPointVisible(pos)) {
+        ent.label.show = false;
+        continue;
+      }
+
+      // projectability
+      const win = scene.cartesianToCanvasCoordinates(pos);
       if (!win) {
         ent.label.show = false;
         continue;
       }
 
+      // screen bounds
       const onScreen =
-        win.x >= -pad && win.x <= w + pad && win.y >= -pad && win.y <= h + pad;
+        win.x >= -PAD_PX &&
+        win.x <= w + PAD_PX &&
+        win.y >= -PAD_PX &&
+        win.y <= h + PAD_PX;
 
-      ent.label.show = onScreen;
+      if (!onScreen) {
+        ent.label.show = false;
+        continue;
+      }
+
+      // declutter by grid
+      if (ent.__labelKind === "country") {
+        const key = cellKey(win.x, win.y, GRID_COUNTRY_PX);
+        if (usedCountryCells.has(key)) {
+          ent.label.show = false;
+          continue;
+        }
+        usedCountryCells.add(key);
+      } else {
+        const key = cellKey(win.x, win.y, GRID_CITY_PX);
+        if (usedCityCells.has(key)) {
+          ent.label.show = false;
+          continue;
+        }
+        usedCityCells.add(key);
+      }
+
+      // city hard cap (after declutter)
+      if (ent.__labelKind === "city") {
+        if (visibleCityCount >= maxCity) {
+          ent.label.show = false;
+          continue;
+        }
+        visibleCityCount++;
+      }
+
+      ent.label.show = true;
     }
   }
 
@@ -134,7 +230,6 @@ export function setupLabels(viewer) {
     requestAnimationFrame(_applyViewportVisibility);
   }
 
-  // hook camera changes once
   viewer.camera.changed.addEventListener(_scheduleVisibilityUpdate);
 
   async function loadAndBuild({
