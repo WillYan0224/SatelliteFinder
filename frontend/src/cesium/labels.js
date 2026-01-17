@@ -10,6 +10,10 @@ export function setupLabels(viewer) {
   let countryEntities = [];
   let cityEntities = [];
 
+  // for viewport visibility control
+  let allLabelEntities = [];
+  let _visScheduled = false;
+
   async function loadJSON(url) {
     const r = await fetch(url);
     if (!r.ok) throw new Error(`Failed to load ${url}`);
@@ -21,10 +25,10 @@ export function setupLabels(viewer) {
     for (const e of cityEntities) viewer.entities.remove(e);
     countryEntities = [];
     cityEntities = [];
+    allLabelEntities = [];
   }
 
   function addPointLabel({ lon, lat, text, kind }) {
-    // kind: "country" | "city"
     const isCountry = kind === "country";
 
     const ent = viewer.entities.add({
@@ -47,14 +51,11 @@ export function setupLabels(viewer) {
         outlineWidth: isCountry ? 3 : 2,
 
         heightReference: HeightReference.CLAMP_TO_GROUND,
-
-        // overlappng
         disableDepthTestDistance: Number.POSITIVE_INFINITY,
 
-        // Display distance polict
         distanceDisplayCondition: isCountry
-          ? new DistanceDisplayCondition(1.4e6, 1.5e7) // 1400km ~ 15000km
-          : new DistanceDisplayCondition(0.0, 3.5e6), // 0.0 ~ 3500km
+          ? new DistanceDisplayCondition(1.4e6, 1.5e7)
+          : new DistanceDisplayCondition(0.0, 3.5e6),
 
         translucencyByDistance: isCountry
           ? undefined
@@ -62,6 +63,7 @@ export function setupLabels(viewer) {
       },
     });
 
+    ent.__labelKind = kind;
     return ent;
   }
 
@@ -84,10 +86,56 @@ export function setupLabels(viewer) {
       if (!text) continue;
 
       const ent = addPointLabel({ lon, lat, text, kind });
+      allLabelEntities.push(ent);
+
       if (kind === "country") countryEntities.push(ent);
       else cityEntities.push(ent);
     }
   }
+
+  // ---------- Viewport visibility (compatible method) ----------
+  function _applyViewportVisibility() {
+    _visScheduled = false;
+
+    const scene = viewer.scene;
+    const canvas = scene.canvas;
+    const w = canvas.clientWidth || 0;
+    const h = canvas.clientHeight || 0;
+    if (!w || !h) return;
+
+    const pad = 30;
+
+    for (const ent of allLabelEntities) {
+      const pos = ent.position?.getValue?.(viewer.clock.currentTime);
+      if (!pos || !ent.label) {
+        if (ent.label) ent.label.show = false;
+        continue;
+      }
+
+      // ✅ Most compatible API
+      const win = scene.cartesianToCanvasCoordinates(pos);
+
+      // null = behind camera / not projectable
+      if (!win) {
+        ent.label.show = false;
+        continue;
+      }
+
+      const onScreen =
+        win.x >= -pad && win.x <= w + pad && win.y >= -pad && win.y <= h + pad;
+
+      ent.label.show = onScreen;
+    }
+  }
+
+  function _scheduleVisibilityUpdate() {
+    if (_visScheduled) return;
+    _visScheduled = true;
+    requestAnimationFrame(_applyViewportVisibility);
+  }
+
+  // hook camera changes once
+  viewer.camera.changed.addEventListener(_scheduleVisibilityUpdate);
 
   async function loadAndBuild({
     countriesUrl = "/data/countries_points.geojson",
@@ -102,6 +150,8 @@ export function setupLabels(viewer) {
 
     buildFromGeoJSON(countries, "country");
     buildFromGeoJSON(cities, "city");
+
+    _applyViewportVisibility();
 
     return {
       countries: countryEntities.length,
