@@ -97,7 +97,8 @@ button:focus-visible {
   white-space: pre;
 }
 
-#btnLocate {
+#btnLocate,
+#btnNearest {
   background-color: #2563eb;
   color: white;
   border: none;
@@ -112,13 +113,15 @@ button:focus-visible {
   background-color: #1d4ed8;
 }
 
-#btnLocate {
+#btnLocate,
+#btnNearest {
   position: relative;
   overflow: hidden;
 }
 
 /* diagonal sweeping*/
-#btnLocate::after {
+#btnLocate::after,
+#btnNearest::after {
   content: "";
   position: absolute;
   top: 0;
@@ -134,9 +137,18 @@ button:focus-visible {
   transform: skewX(-22deg);
 }
 
-#btnLocate:hover::after {
+#btnLocate:hover::after,
+#btnNearest:hover::after {
   left: 150%;
   transition: left 0.6s ease-in-out;
+}
+
+#btnNearest {
+  background-color: #55ae6d;
+}
+
+#btnNearest:hover {
+  background-color: #2c633b;
 }
 
 #hud {
@@ -149,7 +161,12 @@ button:focus-visible {
   background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(10px);
   border-radius: 14px;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    sans-serif;
   z-index: 10;
 }
 
@@ -205,7 +222,9 @@ button:focus-visible {
   color: #fff;
   background: rgba(255, 255, 255, 0.12);
   cursor: pointer;
-  transition: transform 0.05s ease, background 0.15s ease;
+  transition:
+    transform 0.05s ease,
+    background 0.15s ease;
 }
 
 .hud-btn:active {
@@ -219,10 +238,6 @@ button:focus-visible {
 /* same row buttons: make them share width nicely */
 .hud-row-gap .hud-btn {
   flex: 1;
-}
-
-.hud-btn-primary {
-  background: rgba(255, 255, 255, 0.18);
 }
 
 /* slider */

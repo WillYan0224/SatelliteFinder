@@ -7,7 +7,7 @@ export function setupStarlink(viewer) {
 
   async function fetchStarlink(limit = 200) {
     const res = await fetch(
-      `http://127.0.0.1:8000/api/starlink?limit=${limit}`
+      `http://127.0.0.1:8000/api/starlink?limit=${limit}`,
     );
     if (!res.ok) {
       // keep message useful
@@ -111,8 +111,8 @@ export function setupStarlink(viewer) {
         name: s.name,
         position: pos,
         point: {
-          pixelSize: 3,
-          color: Color.YELLOW.withAlpha(0.8),
+          pixelSize: 4,
+          color: Color.LIGHTYELLOW.withAlpha(1.0),
         },
       });
       starlinkMap.set(s.name, { entity, lat, lon, altKm });
