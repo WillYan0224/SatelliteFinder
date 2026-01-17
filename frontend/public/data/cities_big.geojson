@@ -1,0 +1,10 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Tokyo" },
+      "geometry": { "type": "Point", "coordinates": [139.6917, 35.6895] }
+    }
+  ]
+}

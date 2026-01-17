@@ -1,0 +1,10 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Japan" },
+      "geometry": { "type": "Point", "coordinates": [138.2529, 36.2048] }
+    }
+  ]
+}

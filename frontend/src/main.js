@@ -5,6 +5,7 @@ import { setupStarlink } from "./cesium/starlink.js";
 import { setupGeolocate } from "./cesium/geolocate.js";
 import { setupHUD } from "./cesium/hud.js";
 import { ScreenSpaceEventHandler, ScreenSpaceEventType } from "cesium";
+import { setupLabels } from "./cesium/labels.js";
 
 const viewer = createViewer("app");
 
@@ -102,5 +103,10 @@ const iss = setupISS(viewer);
 async function loop() {
   await iss.tick(hud.setTelemetry);
 }
+
+// Country Hints
+const labels = setupLabels(viewer);
+labels.loadAndBuild().catch((e) => console.warn("[labels] load failed:", e));
+
 loop();
 setInterval(loop, 5000);
