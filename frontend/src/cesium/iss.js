@@ -1,4 +1,5 @@
 import { Cartesian3, Color } from "cesium";
+import { ENV } from "../env.js";
 
 export function setupISS(viewer) {
   let issEnt = viewer.entities.getById("iss");
@@ -44,7 +45,7 @@ export function setupISS(viewer) {
   }
 
   async function fetchISS() {
-    const res = await fetch("http://127.0.0.1:8000/api/iss");
+    const res = await fetch(`${ENV.API_BASE}/api/iss`);
     if (!res.ok) throw new Error("ISS API failed");
     return await res.json();
   }
