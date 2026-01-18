@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+import os
 
 from app.services.iss_api import fetch_iss
 from app.services.tle_provider import download_starlink_tle, parse_tle_text
@@ -7,11 +8,21 @@ from app.services.orbit import sat_latlon_now
 
 app = FastAPI(title="SatelliteFinder API")
 
-# CORS (dev: Vite only)
+# ---- CORS ----
+frontend_origin = os.getenv("FRONTEND_ORIGIN", "").strip()
+
+allow_origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+if frontend_origin:
+    allow_origins.append(frontend_origin)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_credentials=True,
+    allow_origins=allow_origins,
+    allow_origin_regex=r"^https://.*\.pages\.dev$",
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
