@@ -7,6 +7,12 @@ import { setupHUD } from "./cesium/hud.js";
 import { ScreenSpaceEventHandler, ScreenSpaceEventType } from "cesium";
 import { setupLabels } from "./cesium/labels.js";
 
+import * as Cesium from "cesium";
+import { ENV } from "./env.js";
+
+if (ENV.CESIUM_TOKEN) {
+  Cesium.Ion.defaultAccessToken = ENV.CESIUM_TOKEN;
+}
 const viewer = createViewer("app");
 
 const starlink = setupStarlink(viewer);

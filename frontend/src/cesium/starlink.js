@@ -1,14 +1,14 @@
 import { Cartesian3, Color } from "cesium";
 import { haversineKm } from "./utils.js";
+import { ENV } from "../env.js";
 
 export function setupStarlink(viewer) {
   const starlinkMap = new Map(); // name -> { entity, lat, lon, altKm }
   let timer = null;
 
   async function fetchStarlink(limit = 200) {
-    const res = await fetch(
-      `http://127.0.0.1:8000/api/starlink?limit=${limit}`,
-    );
+    const res = await fetch(`${ENV.API_BASE}/api/starlink?limit=${limit}`);
+
     if (!res.ok) {
       // keep message useful
       const txt = await res.text().catch(() => "");
